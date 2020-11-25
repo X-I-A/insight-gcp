@@ -56,8 +56,8 @@ def insight_receiver(topic_id):
 
     if dipatcher.receive_data(data_header, data_body):
         return "message received", 200
-    else:
-        return "message to be resent", 400
+    else:  # pragma: no cover
+        return "message to be resent", 400  # pragma: no cover
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))  # pragma: no cover

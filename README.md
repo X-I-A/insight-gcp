@@ -1,3 +1,6 @@
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) 
+[![codecov](https://codecov.io/gh/X-I-A/insight-gcp/branch/master/graph/badge.svg)](https://codecov.io/gh/X-I-A/insight-gcp) 
+[![master-check](https://github.com/x-i-a/insight-gcp/workflows/master-check/badge.svg)](https://github.com/X-I-A/insight-gcp/actions?query=workflow%3Amaster-check) 
 # Insight Receiver For Google Cloud Platform
 
 ## Quick Start Guide
