@@ -32,6 +32,62 @@ deploy: ## Deploy Cloud Run Image by using the last built image
 		--allow-unauthenticated \
 		--update-env-vars XEED_USER=$${XEED_USER},XEED_PASSWORD=$${XEED_PASSWORD};
 
+init-users: ## Create Cloud Run needed users
+	@TMP_PROJECT=$(shell gcloud config list --format 'value(core.project)'); \
+	read -e -p "Enter Your Project Name: " -i $${TMP_PROJECT} PROJECT_ID; \
+	gcloud config set project $${PROJECT_ID}; \
+	gcloud iam service-accounts create cloud-run-pubsub-invoker \
+ 		--display-name "Cloud Run Pub/Sub Invoker"; \
+	gcloud iam service-accounts create cloud-run-insight-receiver \
+		--display-name "Cloud Run Insight Receiver"; \
+	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
+		--member=serviceAccount:cloud-run-insight-receiver@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/pubsub.publisher; \
+	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
+		--member=serviceAccount:cloud-run-insight-receiver@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/datastore.user;
+	gcloud iam service-accounts create cloud-run-insight-cleaner \
+		--display-name "Cloud Run Insight Cleaner"; \
+	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
+		--member=serviceAccount:cloud-run-insight-cleaner@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/pubsub.publisher; \
+	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
+		--member=serviceAccount:cloud-run-insight-cleaner@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/datastore.user; \
+	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
+		--member=serviceAccount:cloud-run-insight-cleaner@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/storage.objectAdmin; \
+	gcloud iam service-accounts create cloud-run-insight-merger \
+		--display-name "Cloud Run Insight Merger"; \
+	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
+		--member=serviceAccount:cloud-run-insight-merger@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/pubsub.publisher; \
+	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
+		--member=serviceAccount:cloud-run-insight-merger@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/datastore.user; \
+	gcloud iam service-accounts create cloud-run-insight-packager \
+		--display-name "Cloud Run Insight Packager"; \
+	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
+		--member=serviceAccount:cloud-run-insight-packager@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/pubsub.publisher; \
+	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
+		--member=serviceAccount:cloud-run-insight-packager@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/datastore.user; \
+	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
+		--member=serviceAccount:cloud-run-insight-packager@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/storage.objectAdmin; \
+	gcloud iam service-accounts create cloud-run-insight-loader \
+		--display-name "Cloud Run Insight Loader"; \
+	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
+		--member=serviceAccount:cloud-run-insight-loader@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/pubsub.publisher; \
+	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
+		--member=serviceAccount:cloud-run-insight-loader@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/datastore.user; \
+	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
+		--member=serviceAccount:cloud-run-insight-loader@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/storage.objectAdmin;
+
 init-topics: ## Create internal channel topics
 	gcloud pubsub topics create insight-cleaner;
 	gcloud pubsub subscriptions create insight-cleaner-debug --topic=insight-cleaner;
@@ -42,9 +98,9 @@ init-topics: ## Create internal channel topics
 	gcloud pubsub topics create insight-loader;
 	gcloud pubsub subscriptions create insight-loader-debug --topic=insight-loader;
 	gcloud pubsub topics create insight-backlog;
-	gcloud pubsub subscriptions create insight-backlog-debug --topic=backlog-cleaner;
+	gcloud pubsub subscriptions create insight-backlog-debug --topic=insight-backlog;
 	gcloud pubsub topics create insight-cockpit;
-	gcloud pubsub subscriptions create insight-cockpit-debug --topic=cockpit-cleaner;
+	gcloud pubsub subscriptions create insight-cockpit-debug --topic=insight-cockpit;
 
 build-receiver: ## Build receiver and upload Cloud Run Image
 	@PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
