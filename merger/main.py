@@ -47,7 +47,7 @@ def insight_receiver():
                          data_header['merge_key'],
                          data_header['merge_level'],
                          data_header['target_merge_level']):
-        return "merge message received", 200
+        return "merge message received", 200 # pragma: no cover
     else:  # pragma: no cover
         return "merge message to be resent", 400  # pragma: no cover
 

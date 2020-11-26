@@ -8,7 +8,7 @@ import google.auth
 from google.cloud import pubsub_v1
 from google.cloud import firestore
 from xialib_gcp import PubsubPublisher, FirestoreDepositor, GCSStorer, GCSListArchiver
-from pyinsight import Insight, Cleaner
+from pyinsight import Insight, Packager
 
 
 app = Flask(__name__)
@@ -43,12 +43,12 @@ def insight_receiver():
     global gcs_storer
     depositor = FirestoreDepositor(db=firestore_db)
     archiver = GCSListArchiver(storer=gcs_storer)
-    cleaner = Cleaner(archiver=archiver, depositor=depositor)
+    packager = Packager(archiver=archiver, depositor=depositor)
 
-    if cleaner.clean_data(data_header['topic_id'], data_header['table_id'], data_header['start_seq']):
-        return "clean message received", 200
+    if packager.package_data(data_header['topic_id'], data_header['table_id']):
+        return "package message received", 200
     else:  # pragma: no cover
-        return "clean message to be resent", 400  # pragma: no cover
+        return "package message to be resent", 400  # pragma: no cover
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))  # pragma: no cover
