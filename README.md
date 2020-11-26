@@ -6,12 +6,12 @@
 ## Quick Start Guide
 Download the source code:
 ```
-git clone https://github.com/X-I-A/xeed-http-gcr
-cd xeed-http-gcr
+git clone https://github.com/X-I-A/insight-gcp
+cd insight-gcp
 ```
-Please using Google Cloud Console or by using Google Cloud SDK
+Please using Google Cloud Console or have Google Cloud SDK installed
 1. `make config` Setting project id, cloud run region and cloud run platform
-2. `make init` Activation of API, creation of service account with roles
+2. `make init` **Only Once per project** Activation of API, creation of service account with roles
 3. `make build` Build and upload Cloud Run Images
 4. `make deploy` Deploy Cloud Run Image by using the last built image
 5. `make deploy-channel` Deploy different internal channels and link them to the deployed cloud run services
