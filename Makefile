@@ -147,25 +147,52 @@ deploy-receiver: ## Deploy a receiver from last built image
 		--region $${CLOUD_RUN_REGION} \
 		--platform managed;
 
+deploy-cleaner: ## Deploy a cleaner from last built image
+	@PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
+	read -e -p "Enter Desired Cloud Run Region: " -i "europe-west1" CLOUD_RUN_REGION; \
+	gcloud run deploy insight-cleaner \
+		--image gcr.io/$${PROJECT_ID}/insight-cleaner \
+    	--service-account cloud-run-insight-cleaner@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--region $${CLOUD_RUN_REGION} \
+		--platform managed \
+		--no-allow-unauthenticated; \
+	gcloud run services add-iam-policy-binding insight-cleaner \
+		--member=serviceAccount:cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/run.invoker \
+		--region $${CLOUD_RUN_REGION} \
+		--platform managed;
+	PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
+	CLEANER_URL=$(shell gcloud run services list --platform managed --filter="insight-cleaner" --format="value(URL)"); \
+	gcloud pubsub subscriptions create insight-cleaner-agent --topic insight-cleaner \
+		--push-endpoint=$${CLEANER_URL} \
+		--min-retry-delay=10 \
+		--push-auth-service-account=cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com;
+
 create-topic: ## Create a topic
 	@read -e -p "Enter desired topic name: " -i "dummy" TOPIC_ID; \
+	read -e -p "Enter Desired Bucket Location: " -i "europe-west1" BUCKET_REGION; \
 	PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
 	RECEIVER_URL=$(shell gcloud run services list --platform managed --filter="insight-receiver-000" --format="value(URL)");\
-	gcloud pubsub topics create $${TOPIC_ID}; \
-	gcloud pubsub subscriptions create $${TOPIC_ID}-receiver --topic $${TOPIC_ID} \
-		--push-endpoint=$${RECEIVER_URL}/topics/$${TOPIC_ID} \
-		--min-retry-delay=10 \
-		--push-auth-service-account=cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com; \
 	gcloud firestore indexes composite create \
 		--collection-group=slt-npl-01 \
 		--field-config=field-path=table_id,order=ascending \
 		--field-config=field-path=filter_key,order=ascending \
-		--field-config=field-path=sort_key,order=ascending; \
+		--field-config=field-path=sort_key,order=ascending \
+		--asyn; \
 	gcloud firestore indexes composite create \
 		--collection-group=slt-npl-01 \
 		--field-config=field-path=table_id,order=ascending \
 		--field-config=field-path=filter_key,order=ascending \
-		--field-config=field-path=sort_key,order=descending; \
+		--field-config=field-path=sort_key,order=descending \
+		--asyn; \
 	gcloud firestore indexes fields update data \
 		--collection-group=slt-npl-01 \
-		--disable-indexes;
+		--disable-indexes \
+		--asyn; \
+	gsutil mb gs://$${PROJECT_ID}-$${TOPIC_ID}/ -l $${BUCKET_REGION}
+	gcloud pubsub topics create $${TOPIC_ID}; \
+	gcloud pubsub subscriptions create $${TOPIC_ID}-receiver --topic $${TOPIC_ID} \
+		--push-endpoint=$${RECEIVER_URL} \
+		--min-retry-delay=10 \
+		--push-auth-service-account=cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com; \
+

@@ -9,8 +9,9 @@
     <option name="TEMPLATE_CONFIGURATION" value="Jinja2" />
     <option name="TEMPLATE_FOLDERS">
       <list>
-        <option value="$MODULE_DIR$/templates" />
-        <option value="$MODULE_DIR$/dispatcher/templates" />
+        <option value="$MODULE_DIR$/receiver/templates" />
+        <option value="$MODULE_DIR$/cleaner/templates" />
+        <option value="$MODULE_DIR$/merger/templates" />
       </list>
     </option>
   </component>
