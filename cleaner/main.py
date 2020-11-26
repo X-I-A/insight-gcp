@@ -7,8 +7,8 @@ from flask import Flask, request, Response, render_template
 import google.auth
 from google.cloud import pubsub_v1
 from google.cloud import firestore
-from xialib_gcp import PubsubPublisher, FirestoreDepositor, GCSStorer
-from pyinsight import Insight, Dispatcher
+from xialib_gcp import PubsubPublisher, FirestoreDepositor, GCSStorer, GCSListArchiver
+from pyinsight import Insight, Cleaner
 
 
 app = Flask(__name__)
@@ -25,12 +25,11 @@ Insight.set_internal_channel(messager=PubsubPublisher(pub_client=pubsub_v1.Publi
 )
 
 firestore_db = firestore.Client()
-pub_client = pubsub_v1.PublisherClient()
 gcs_storer = GCSStorer()
 
 
 @app.route('/', methods=['GET', 'POST'])
-def main():
+def insight_receiver():
     if request.method == 'GET':
         return render_template("index.html"), 200
     envelope = request.get_json()
@@ -39,20 +38,17 @@ def main():
     if not isinstance(envelope, dict) or 'message' not in envelope:
         return "invalid Pub/Sub message format", 204
     data_header = envelope['message']['attributes']
-    data_body = json.loads(gzip.decompress(base64.b64decode(envelope['message']['data'])).decode())
 
     global firestore_db
-    global pub_client
     global gcs_storer
-    publishers = {'pubsub': PubsubPublisher(pub_client=pub_client)}
     depositor = FirestoreDepositor(db=firestore_db)
-    storers = [gcs_storer]
-    dipatcher = Dispatcher(publishers=publishers, depositor=depositor, storers=storers)
+    archiver = GCSListArchiver(storer=gcs_storer)
+    cleaner = Cleaner(archiver=archiver, depositor=depositor)
 
-    if dipatcher.receive_data(data_header, data_body):
-        return "message received", 200
+    if cleaner.clean_data(data_header['topic_id'], data_header['table_id'], data_header['start_seq']):
+        return "clean message received", 200
     else:  # pragma: no cover
-        return "message to be resent", 400  # pragma: no cover
+        return " clean message to be resent", 400  # pragma: no cover
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))  # pragma: no cover

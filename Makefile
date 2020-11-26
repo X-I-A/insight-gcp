@@ -92,7 +92,7 @@ init-users: ## Create Cloud Run needed users
 		--member=serviceAccount:service-$${PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com \
 		--role=roles/iam.serviceAccountTokenCreator
 
-init-topics: ## Create internal channel topics
+init-channel: ## Create internal channel topics
 	gcloud pubsub topics create insight-cleaner;
 	gcloud pubsub subscriptions create insight-cleaner-debug --topic=insight-cleaner;
 	gcloud pubsub topics create insight-merger;
@@ -131,15 +131,41 @@ build-loader: ## Build loader and upload Cloud Run Image
 	cd loader; \
 	gcloud builds submit --tag gcr.io/$${PROJECT_ID}/insight-loader;
 
-build-receiver: ## Deploy Cloud Run Insight Receiver by using the last built image
-	@PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
+deploy-receiver: ## Deploy a receiver from last built image
+	@RECEIVER_ID="000"; \
+	PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
 	read -e -p "Enter Desired Cloud Run Region: " -i "europe-west1" CLOUD_RUN_REGION; \
-	gcloud run deploy xeed-http \
+	gcloud run deploy insight-receiver-$${RECEIVER_ID} \
 		--image gcr.io/$${PROJECT_ID}/insight-receiver \
     	--service-account cloud-run-insight-receiver@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--region $${CLOUD_RUN_REGION} \
 		--platform managed \
-		--no-allow-unauthenticated  \
-		--update-env-vars XEED_USER=$${XEED_USER},XEED_PASSWORD=$${XEED_PASSWORD};
+		--no-allow-unauthenticated; \
+	gcloud run services add-iam-policy-binding insight-receiver-$${RECEIVER_ID} \
+		--member=serviceAccount:cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/run.invoker \
+		--region $${CLOUD_RUN_REGION} \
+		--platform managed;
 
-deploy-receiver:
+create-topic: ## Create a topic
+	@read -e -p "Enter desired topic name: " -i "dummy" TOPIC_ID; \
+	PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
+	RECEIVER_URL=$(shell gcloud run services list --platform managed --filter="insight-receiver-000" --format="value(URL)");\
+	gcloud pubsub topics create $${TOPIC_ID}; \
+	gcloud pubsub subscriptions create $${TOPIC_ID}-receiver --topic $${TOPIC_ID} \
+		--push-endpoint=$${RECEIVER_URL}/topics/$${TOPIC_ID} \
+		--min-retry-delay=10 \
+		--push-auth-service-account=cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com; \
+	gcloud firestore indexes composite create \
+		--collection-group=slt-npl-01 \
+		--field-config=field-path=table_id,order=ascending \
+		--field-config=field-path=filter_key,order=ascending \
+		--field-config=field-path=sort_key,order=ascending; \
+	gcloud firestore indexes composite create \
+		--collection-group=slt-npl-01 \
+		--field-config=field-path=table_id,order=ascending \
+		--field-config=field-path=filter_key,order=ascending \
+		--field-config=field-path=sort_key,order=descending; \
+	gcloud firestore indexes fields update data \
+		--collection-group=slt-npl-01 \
+		--disable-indexes;
