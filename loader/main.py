@@ -49,7 +49,7 @@ def main():
     storers = [gcs_storer]
     loader = Loader(publishers=publishers, depositor=depositor, archiver=archiver, storers=storers)
 
-    if loader.load(load_config=data_header):
+    if loader.load(load_config=json.loads(data_header['load_config'])):
         return "load message received", 200
     else:  # pragma: no cover
         return "load message to be resent", 400  # pragma: no cover

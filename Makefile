@@ -11,26 +11,9 @@ init: ## Activation of API, creation of service account with roles
 		--member=serviceAccount:cloud-run-xeed-http@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--role=roles/pubsub.publisher
 
-build: ## Build and upload Cloud Run Image
-	@TMP_PROJECT=$(shell gcloud config list --format 'value(core.project)'); \
-	read -e -p "Enter Your Project Name: " -i $${TMP_PROJECT} PROJECT_ID; \
-	gcloud config set project $${PROJECT_ID}; \
-	gcloud builds submit --tag gcr.io/$${PROJECT_ID}/xeed-http-gcr;
+build: build-receiver build-cleaner build-merger build-packager build-loader ## Build all Cloud Run Image
 
-deploy: ## Deploy Cloud Run Image by using the last built image
-	@TMP_PROJECT=$(shell gcloud config list --format 'value(core.project)'); \
-	read -e -p "Enter Your Project Name: " -i $${TMP_PROJECT} PROJECT_ID; \
-	gcloud config set project $${PROJECT_ID}; \
-	read -e -p "Enter Desired Cloud Run Region: " -i "europe-west1" CLOUD_RUN_REGION; \
-	read -e -p "Enter Desired Username: " -i "user" XEED_USER; \
-	read -e -p "Enter Desired Password: " -i "La_vie_est_belle" XEED_PASSWORD; \
-	gcloud run deploy xeed-http \
-		--image gcr.io/$${PROJECT_ID}/xeed-http-gcr \
-    	--service-account cloud-run-xeed-http@$${PROJECT_ID}.iam.gserviceaccount.com \
-		--region $${CLOUD_RUN_REGION} \
-		--platform managed \
-		--allow-unauthenticated \
-		--update-env-vars XEED_USER=$${XEED_USER},XEED_PASSWORD=$${XEED_PASSWORD};
+deploy: deploy-receiver deploy-cleaner deploy-merger deploy-packager deploy-loader ## Deploy Cloud Run Image by using the last built image
 
 init-users: ## Create Cloud Run needed users
 	@TMP_PROJECT=$(shell gcloud config list --format 'value(core.project)'); \
@@ -92,20 +75,6 @@ init-users: ## Create Cloud Run needed users
 		--member=serviceAccount:service-$${PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com \
 		--role=roles/iam.serviceAccountTokenCreator
 
-init-channel: ## Create internal channel topics
-	gcloud pubsub topics create insight-cleaner;
-	gcloud pubsub subscriptions create insight-cleaner-debug --topic=insight-cleaner;
-	gcloud pubsub topics create insight-merger;
-	gcloud pubsub subscriptions create insight-merger-debug --topic=insight-merger;
-	gcloud pubsub topics create insight-packager;
-	gcloud pubsub subscriptions create insight-packager-debug --topic=insight-packager;
-	gcloud pubsub topics create insight-loader;
-	gcloud pubsub subscriptions create insight-loader-debug --topic=insight-loader;
-	gcloud pubsub topics create insight-backlog;
-	gcloud pubsub subscriptions create insight-backlog-debug --topic=insight-backlog;
-	gcloud pubsub topics create insight-cockpit;
-	gcloud pubsub subscriptions create insight-cockpit-debug --topic=insight-cockpit;
-
 build-receiver: ## Build receiver and upload Cloud Run Image
 	@PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
 	cd receiver; \
@@ -131,105 +100,135 @@ build-loader: ## Build loader and upload Cloud Run Image
 	cd loader; \
 	gcloud builds submit --tag gcr.io/$${PROJECT_ID}/insight-loader;
 
+config: ## Setting deploy configuration
+	@TMP_PROJECT=$(shell gcloud config list --format 'value(core.project)'); \
+	read -e -p "Enter Your Project Name: " -i $${TMP_PROJECT} PROJECT_ID; \
+	gcloud config set project $${PROJECT_ID};
+	@TMP_RUN_REGION=$(shell gcloud config list --format 'value(run.region)'); \
+	read -e -p "Enter Desired Cloud Run Region: " -i $${TMP_RUN_REGIO} CLOUD_RUN_REGION; \
+	gcloud config set run/region $${CLOUD_RUN_REGION};
+	@TMP_RUN_PLATFORM=$(shell gcloud config list --format 'value(run.platform)'); \
+	read -e -p "Enter Desired Cloud Run Platform: " -i $${TMP_RUN_PLATFORM} CLOUD_RUN_PLATFORM; \
+	gcloud config set run/platform $${CLOUD_RUN_PLATFORM};
+
 deploy-receiver: ## Deploy a receiver from last built image
 	@RECEIVER_ID="000"; \
 	PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
-	read -e -p "Enter Desired Cloud Run Region: " -i "europe-west1" CLOUD_RUN_REGION; \
+	CLOUD_RUN_REGION=$(shell gcloud config list --format 'value(run.region)'); \
+	CLOUD_RUN_PLATFORM=$(shell gcloud config list --format 'value(run.platform)'); \
 	gcloud run deploy insight-receiver-$${RECEIVER_ID} \
 		--image gcr.io/$${PROJECT_ID}/insight-receiver \
     	--service-account cloud-run-insight-receiver@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--region $${CLOUD_RUN_REGION} \
-		--platform managed \
+		--platform $${CLOUD_RUN_PLATFORM} \
 		--no-allow-unauthenticated; \
 	gcloud run services add-iam-policy-binding insight-receiver-$${RECEIVER_ID} \
 		--member=serviceAccount:cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--role=roles/run.invoker \
 		--region $${CLOUD_RUN_REGION} \
-		--platform managed;
+		--platform $${CLOUD_RUN_PLATFORM};
 
 deploy-cleaner: ## Deploy a cleaner from last built image
 	@PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
-	read -e -p "Enter Desired Cloud Run Region: " -i "europe-west1" CLOUD_RUN_REGION; \
+	CLOUD_RUN_REGION=$(shell gcloud config list --format 'value(run.region)'); \
+	CLOUD_RUN_PLATFORM=$(shell gcloud config list --format 'value(run.platform)'); \
 	gcloud run deploy insight-cleaner \
 		--image gcr.io/$${PROJECT_ID}/insight-cleaner \
     	--service-account cloud-run-insight-cleaner@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--region $${CLOUD_RUN_REGION} \
-		--platform managed \
+		--platform $${CLOUD_RUN_PLATFORM} \
 		--no-allow-unauthenticated; \
 	gcloud run services add-iam-policy-binding insight-cleaner \
 		--member=serviceAccount:cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--role=roles/run.invoker \
 		--region $${CLOUD_RUN_REGION} \
-		--platform managed;
+		--platform $${CLOUD_RUN_PLATFORM};
+
+deploy-merger: ## Deploy a merger from last built image
+	@PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
+	CLOUD_RUN_REGION=$(shell gcloud config list --format 'value(run.region)'); \
+	CLOUD_RUN_PLATFORM=$(shell gcloud config list --format 'value(run.platform)'); \
+	gcloud run deploy insight-merger \
+		--image gcr.io/$${PROJECT_ID}/insight-merger \
+    	--service-account cloud-run-insight-merger@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--region $${CLOUD_RUN_REGION} \
+		--platform $${CLOUD_RUN_PLATFORM} \
+		--no-allow-unauthenticated; \
+	gcloud run services add-iam-policy-binding insight-merger \
+		--member=serviceAccount:cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/run.invoker \
+		--region $${CLOUD_RUN_REGION} \
+		--platform $${CLOUD_RUN_PLATFORM};
+
+deploy-packager: ## Deploy a packager from last built image
+	@PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
+	CLOUD_RUN_REGION=$(shell gcloud config list --format 'value(run.region)'); \
+	CLOUD_RUN_PLATFORM=$(shell gcloud config list --format 'value(run.platform)'); \
+	gcloud run deploy insight-packager \
+		--image gcr.io/$${PROJECT_ID}/insight-packager \
+    	--service-account cloud-run-insight-packager@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--region $${CLOUD_RUN_REGION} \
+		--platform $${CLOUD_RUN_PLATFORM} \
+		--no-allow-unauthenticated; \
+	gcloud run services add-iam-policy-binding insight-packager \
+		--member=serviceAccount:cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/run.invoker \
+		--region $${CLOUD_RUN_REGION} \
+		--platform $${CLOUD_RUN_PLATFORM};
+
+deploy-loader: ## Deploy a loader from last built image
+	@PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
+	CLOUD_RUN_REGION=$(shell gcloud config list --format 'value(run.region)'); \
+	CLOUD_RUN_PLATFORM=$(shell gcloud config list --format 'value(run.platform)'); \
+	gcloud run deploy insight-loader \
+		--image gcr.io/$${PROJECT_ID}/insight-loader \
+    	--service-account cloud-run-insight-loader@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--region $${CLOUD_RUN_REGION} \
+		--platform $${CLOUD_RUN_PLATFORM} \
+		--no-allow-unauthenticated; \
+	gcloud run services add-iam-policy-binding insight-loader \
+		--member=serviceAccount:cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/run.invoker \
+		--region $${CLOUD_RUN_REGION} \
+		--platform $${CLOUD_RUN_PLATFORM};
+
+deploy-channel: ## Deployer internal channel topics and attach them to related services
+	gcloud pubsub topics create insight-cleaner;
+	gcloud pubsub subscriptions create insight-cleaner-debug --topic=insight-cleaner;
 	PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
 	CLEANER_URL=$(shell gcloud run services list --platform managed --filter="insight-cleaner" --format="value(URL)"); \
 	gcloud pubsub subscriptions create insight-cleaner-agent --topic insight-cleaner \
 		--push-endpoint=$${CLEANER_URL} \
 		--min-retry-delay=10 \
 		--push-auth-service-account=cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com;
-
-deploy-merger: ## Deploy a merger from last built image
-	@PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
-	read -e -p "Enter Desired Cloud Run Region: " -i "europe-west1" CLOUD_RUN_REGION; \
-	gcloud run deploy insight-merger \
-		--image gcr.io/$${PROJECT_ID}/insight-merger \
-    	--service-account cloud-run-insight-merger@$${PROJECT_ID}.iam.gserviceaccount.com \
-		--region $${CLOUD_RUN_REGION} \
-		--platform managed \
-		--no-allow-unauthenticated; \
-	gcloud run services add-iam-policy-binding insight-merger \
-		--member=serviceAccount:cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com \
-		--role=roles/run.invoker \
-		--region $${CLOUD_RUN_REGION} \
-		--platform managed;
+	gcloud pubsub topics create insight-merger;
+	gcloud pubsub subscriptions create insight-merger-debug --topic=insight-merger;
 	PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
 	MERGER_URL=$(shell gcloud run services list --platform managed --filter="insight-merger" --format="value(URL)"); \
 	gcloud pubsub subscriptions create insight-merger-agent --topic insight-merger \
 		--push-endpoint=$${MERGER_URL} \
 		--min-retry-delay=10 \
 		--push-auth-service-account=cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com;
-
-deploy-packager: ## Deploy a packager from last built image
-	@PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
-	read -e -p "Enter Desired Cloud Run Region: " -i "europe-west1" CLOUD_RUN_REGION; \
-	gcloud run deploy insight-packager \
-		--image gcr.io/$${PROJECT_ID}/insight-packager \
-    	--service-account cloud-run-insight-packager@$${PROJECT_ID}.iam.gserviceaccount.com \
-		--region $${CLOUD_RUN_REGION} \
-		--platform managed \
-		--no-allow-unauthenticated; \
-	gcloud run services add-iam-policy-binding insight-packager \
-		--member=serviceAccount:cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com \
-		--role=roles/run.invoker \
-		--region $${CLOUD_RUN_REGION} \
-		--platform managed;
+	gcloud pubsub topics create insight-packager;
+	gcloud pubsub subscriptions create insight-packager-debug --topic=insight-packager;
 	PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
 	PACKAGER_URL=$(shell gcloud run services list --platform managed --filter="insight-packager" --format="value(URL)"); \
 	gcloud pubsub subscriptions create insight-packager-agent --topic insight-packager \
 		--push-endpoint=$${PACKAGER_URL} \
 		--min-retry-delay=10 \
 		--push-auth-service-account=cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com;
-
-deploy-loader: ## Deploy a loader from last built image
-	@PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
-	read -e -p "Enter Desired Cloud Run Region: " -i "europe-west1" CLOUD_RUN_REGION; \
-	gcloud run deploy insight-loader \
-		--image gcr.io/$${PROJECT_ID}/insight-loader \
-    	--service-account cloud-run-insight-loader@$${PROJECT_ID}.iam.gserviceaccount.com \
-		--region $${CLOUD_RUN_REGION} \
-		--platform managed \
-		--no-allow-unauthenticated; \
-	gcloud run services add-iam-policy-binding insight-loader \
-		--member=serviceAccount:cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com \
-		--role=roles/run.invoker \
-		--region $${CLOUD_RUN_REGION} \
-		--platform managed;
+	gcloud pubsub topics create insight-loader;
+	gcloud pubsub subscriptions create insight-loader-debug --topic=insight-loader;
 	PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
-	LOADER_URL=$(shell gcloud run services list --platform managed --filter="insight-cleaner" --format="value(URL)"); \
+	LOADER_URL=$(shell gcloud run services list --platform managed --filter="insight-loader" --format="value(URL)"); \
 	gcloud pubsub subscriptions create insight-loader-agent --topic insight-loader \
 		--push-endpoint=$${LOADER_URL} \
 		--min-retry-delay=10 \
 		--push-auth-service-account=cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com;
+	gcloud pubsub topics create insight-backlog;
+	gcloud pubsub subscriptions create insight-backlog-debug --topic=insight-backlog;
+	gcloud pubsub topics create insight-cockpit;
+	gcloud pubsub subscriptions create insight-cockpit-debug --topic=insight-cockpit;
 
 create-topic: ## Create a topic
 	@read -e -p "Enter desired topic name: " -i "dummy" TOPIC_ID; \

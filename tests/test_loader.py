@@ -27,7 +27,7 @@ def test_loader(client):
         'tar_table_id': 'aged_data',
         'load_type': 'initial'
     }
-    envoloppe = {'message': {'attributes': load_config,
+    envoloppe = {'message': {'attributes': {'load_config': json.dumps(load_config)},
         'data': base64.b64encode(gzip.compress(b'[]')).decode()}}
     response = client.post('/', json=envoloppe)
     assert response.status_code == 200
