@@ -6,7 +6,7 @@ ENV APP_HOME /app
 WORKDIR $APP_HOME
 COPY . ./
 # Install production dependencies.
-RUN pip install Flask gunicorn google-cloud-pubsub firebase-admin gcsfs pandas pyarrow
+RUN pip install Flask gunicorn xialib xialib-gcp pyinsight
 # Run the web service on container startup. Here we use the gunicorn
 # webserver, with one worker process and 8 threads.
 # For environments with multiple CPU cores, increase the number of workers

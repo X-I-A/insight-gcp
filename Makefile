@@ -5,11 +5,16 @@ SHELL:=/bin/bash
 help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-init: ## Activation of API, creation of service account with roles
-	@PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
-	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
-		--member=serviceAccount:cloud-run-xeed-http@$${PROJECT_ID}.iam.gserviceaccount.com \
-		--role=roles/pubsub.publisher
+config: ## Setting deploy configuration
+	@TMP_PROJECT=$(shell gcloud config list --format 'value(core.project)'); \
+	read -e -p "Enter Your Project Name: " -i $${TMP_PROJECT} PROJECT_ID; \
+	gcloud config set project $${PROJECT_ID}; \
+	read -e -p "Enter Desired Cloud Run Region: " -i 'europe-west1' CLOUD_RUN_REGION; \
+	gcloud config set run/region $${CLOUD_RUN_REGION}; \
+	read -e -p "Enter Desired Cloud Run Platform: " -i 'managed' CLOUD_RUN_PLATFORM; \
+	gcloud config set run/platform $${CLOUD_RUN_PLATFORM};
+
+init: init-users ## Activation of API, creation of service account with roles
 
 build: build-receiver build-cleaner build-merger build-packager build-loader ## Build all Cloud Run Image
 
@@ -99,17 +104,6 @@ build-loader: ## Build loader and upload Cloud Run Image
 	@PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
 	cd loader; \
 	gcloud builds submit --tag gcr.io/$${PROJECT_ID}/insight-loader;
-
-config: ## Setting deploy configuration
-	@TMP_PROJECT=$(shell gcloud config list --format 'value(core.project)'); \
-	read -e -p "Enter Your Project Name: " -i $${TMP_PROJECT} PROJECT_ID; \
-	gcloud config set project $${PROJECT_ID};
-	@TMP_RUN_REGION=$(shell gcloud config list --format 'value(run.region)'); \
-	read -e -p "Enter Desired Cloud Run Region: " -i $${TMP_RUN_REGIO} CLOUD_RUN_REGION; \
-	gcloud config set run/region $${CLOUD_RUN_REGION};
-	@TMP_RUN_PLATFORM=$(shell gcloud config list --format 'value(run.platform)'); \
-	read -e -p "Enter Desired Cloud Run Platform: " -i $${TMP_RUN_PLATFORM} CLOUD_RUN_PLATFORM; \
-	gcloud config set run/platform $${CLOUD_RUN_PLATFORM};
 
 deploy-receiver: ## Deploy a receiver from last built image
 	@RECEIVER_ID="000"; \
