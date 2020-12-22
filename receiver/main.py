@@ -7,6 +7,7 @@ from flask import Flask, request, Response, render_template
 import google.auth
 from google.cloud import pubsub_v1
 from google.cloud import firestore
+import google.cloud.logging
 from xialib_gcp import PubsubPublisher, FirestoreDepositor, GCSStorer
 from pyinsight import Insight, Dispatcher
 
@@ -27,7 +28,9 @@ Insight.set_internal_channel(messager=PubsubPublisher(pub_client=pubsub_v1.Publi
 firestore_db = firestore.Client()
 pub_client = pubsub_v1.PublisherClient()
 gcs_storer = GCSStorer()
-
+client = google.cloud.logging.Client()
+client.get_default_handler()
+client.setup_logging()
 
 @app.route('/', methods=['GET', 'POST'])
 def main():

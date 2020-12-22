@@ -163,7 +163,8 @@ deploy-packager: ## Deploy a packager from last built image
     	--service-account cloud-run-insight-packager@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--region $${CLOUD_RUN_REGION} \
 		--platform $${CLOUD_RUN_PLATFORM} \
-		--no-allow-unauthenticated; \
+		--no-allow-unauthenticated \
+		--memory 512M; \
 	gcloud run services add-iam-policy-binding insight-packager \
 		--member=serviceAccount:cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--role=roles/run.invoker \
