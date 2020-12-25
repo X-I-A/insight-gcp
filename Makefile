@@ -179,7 +179,7 @@ deploy-packager: ## Deploy a packager from last built image
 		--region $${CLOUD_RUN_REGION} \
 		--platform $${CLOUD_RUN_PLATFORM} \
 		--no-allow-unauthenticated \
-		--memory 1Gi; \
+		--memory=1Gi; \
 	gcloud run services add-iam-policy-binding insight-packager \
 		--member=serviceAccount:cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--role=roles/run.invoker \
@@ -196,9 +196,9 @@ deploy-loader: ## Deploy a loader from last built image
 		--region $${CLOUD_RUN_REGION} \
 		--platform $${CLOUD_RUN_PLATFORM} \
 		--no-allow-unauthenticated \
-		--max-instances 1 \
-		--concurrency 1 \
-		--memory 512Mi; \
+		--max-instances=1 \
+		--concurrency=1 \
+		--memory=512Mi; \
 	gcloud run services add-iam-policy-binding insight-loader \
 		--member=serviceAccount:cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--role=roles/run.invoker \
@@ -212,6 +212,7 @@ deploy-channel: ## Deployer internal channel topics and attach them to related s
 	CLEANER_URL=$(shell gcloud run services list --platform managed --filter="insight-cleaner" --format="value(URL)"); \
 	gcloud pubsub subscriptions create insight-cleaner-agent --topic insight-cleaner \
 		--push-endpoint=$${CLEANER_URL} \
+		--ack-deadline=600 \
 		--min-retry-delay=10 \
 		--push-auth-service-account=cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com;
 	gcloud pubsub topics create insight-merger;
@@ -220,6 +221,7 @@ deploy-channel: ## Deployer internal channel topics and attach them to related s
 	MERGER_URL=$(shell gcloud run services list --platform managed --filter="insight-merger" --format="value(URL)"); \
 	gcloud pubsub subscriptions create insight-merger-agent --topic insight-merger \
 		--push-endpoint=$${MERGER_URL} \
+		--ack-deadline=600 \
 		--min-retry-delay=10 \
 		--push-auth-service-account=cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com;
 	gcloud pubsub topics create insight-packager;
@@ -228,6 +230,7 @@ deploy-channel: ## Deployer internal channel topics and attach them to related s
 	PACKAGER_URL=$(shell gcloud run services list --platform managed --filter="insight-packager" --format="value(URL)"); \
 	gcloud pubsub subscriptions create insight-packager-agent --topic insight-packager \
 		--push-endpoint=$${PACKAGER_URL} \
+		--ack-deadline=600 \
 		--min-retry-delay=10 \
 		--push-auth-service-account=cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com;
 	gcloud pubsub topics create insight-loader;
@@ -236,6 +239,7 @@ deploy-channel: ## Deployer internal channel topics and attach them to related s
 	LOADER_URL=$(shell gcloud run services list --platform managed --filter="insight-loader" --format="value(URL)"); \
 	gcloud pubsub subscriptions create insight-loader-agent --topic insight-loader \
 		--push-endpoint=$${LOADER_URL} \
+		--ack-deadline=600 \
 		--min-retry-delay=10 \
 		--push-auth-service-account=cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com;
 	gcloud pubsub topics create insight-backlog;
@@ -268,6 +272,7 @@ create-topic: ## Create a topic
 	gcloud pubsub topics create $${TOPIC_ID}; \
 	gcloud pubsub subscriptions create $${TOPIC_ID}-receiver --topic $${TOPIC_ID} \
 		--push-endpoint=$${RECEIVER_URL} \
+		--ack-deadline=600 \
 		--min-retry-delay=10 \
 		--push-auth-service-account=cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com; \
 
