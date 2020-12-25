@@ -35,6 +35,9 @@ init-users: ## Create Cloud Run needed users
 	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
 		--member=serviceAccount:cloud-run-insight-receiver@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--role=roles/datastore.user; \
+	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
+		--member=serviceAccount:cloud-run-insight-receiver@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/logging.logWriter;
 	gcloud iam service-accounts create cloud-run-insight-cleaner \
 		--display-name "Cloud Run Insight Cleaner"; \
 	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
@@ -46,6 +49,9 @@ init-users: ## Create Cloud Run needed users
 	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
 		--member=serviceAccount:cloud-run-insight-cleaner@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--role=roles/storage.objectAdmin; \
+	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
+		--member=serviceAccount:cloud-run-insight-cleaner@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/logging.logWriter;
 	gcloud iam service-accounts create cloud-run-insight-merger \
 		--display-name "Cloud Run Insight Merger"; \
 	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
@@ -54,6 +60,9 @@ init-users: ## Create Cloud Run needed users
 	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
 		--member=serviceAccount:cloud-run-insight-merger@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--role=roles/datastore.user; \
+	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
+		--member=serviceAccount:cloud-run-insight-merger@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/logging.logWriter;
 	gcloud iam service-accounts create cloud-run-insight-packager \
 		--display-name "Cloud Run Insight Packager"; \
 	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
@@ -65,6 +74,9 @@ init-users: ## Create Cloud Run needed users
 	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
 		--member=serviceAccount:cloud-run-insight-packager@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--role=roles/storage.objectAdmin; \
+	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
+		--member=serviceAccount:cloud-run-insight-packager@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/logging.logWriter;
 	gcloud iam service-accounts create cloud-run-insight-loader \
 		--display-name "Cloud Run Insight Loader"; \
 	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
@@ -76,6 +88,9 @@ init-users: ## Create Cloud Run needed users
 	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
 		--member=serviceAccount:cloud-run-insight-loader@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--role=roles/storage.objectAdmin; \
+	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
+		--member=serviceAccount:cloud-run-insight-loader@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/logging.logWriter;
 	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
 		--member=serviceAccount:service-$${PROJECT_NUMBER}@gcp-sa-pubsub.iam.gserviceaccount.com \
 		--role=roles/iam.serviceAccountTokenCreator
@@ -164,7 +179,7 @@ deploy-packager: ## Deploy a packager from last built image
 		--region $${CLOUD_RUN_REGION} \
 		--platform $${CLOUD_RUN_PLATFORM} \
 		--no-allow-unauthenticated \
-		--memory 512M; \
+		--memory 1Gi; \
 	gcloud run services add-iam-policy-binding insight-packager \
 		--member=serviceAccount:cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--role=roles/run.invoker \
@@ -180,7 +195,10 @@ deploy-loader: ## Deploy a loader from last built image
     	--service-account cloud-run-insight-loader@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--region $${CLOUD_RUN_REGION} \
 		--platform $${CLOUD_RUN_PLATFORM} \
-		--no-allow-unauthenticated; \
+		--no-allow-unauthenticated \
+		--max-instances 1 \
+		--concurrency 1 \
+		--memory 512Mi; \
 	gcloud run services add-iam-policy-binding insight-loader \
 		--member=serviceAccount:cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--role=roles/run.invoker \

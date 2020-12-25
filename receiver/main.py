@@ -28,6 +28,7 @@ Insight.set_internal_channel(messager=PubsubPublisher(pub_client=pubsub_v1.Publi
 firestore_db = firestore.Client()
 pub_client = pubsub_v1.PublisherClient()
 gcs_storer = GCSStorer()
+
 client = google.cloud.logging.Client()
 client.get_default_handler()
 client.setup_logging()
@@ -50,7 +51,13 @@ def main():
     publishers = {'pubsub': PubsubPublisher(pub_client=pub_client)}
     depositor = FirestoreDepositor(db=firestore_db)
     storers = [gcs_storer]
-    dipatcher = Dispatcher(publishers=publishers, depositor=depositor, storers=storers)
+
+    if 'INSIGHT_SUB_LIST' in os.environ:
+        sub_list = json.loads(gzip.decompress(base64.b64decode(os.environ.get('INSIGHT_SUB_LIST'))).decode())
+    else:
+        sub_list = {}
+
+    dipatcher = Dispatcher(publishers=publishers, depositor=depositor, storers=storers, subscription_list=sub_list)
 
     if dipatcher.receive_data(data_header, data_body):
         return "message received", 200
