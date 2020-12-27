@@ -52,6 +52,8 @@ init-users: ## Create Cloud Run needed users
 	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
 		--member=serviceAccount:cloud-run-insight-cleaner@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--role=roles/logging.logWriter;
+	gcloud iam service-accounts create cloud-run-insight-linker \
+		--display-name "Cloud Run Insight Linker"; \
 	gcloud iam service-accounts create cloud-run-insight-merger \
 		--display-name "Cloud Run Insight Merger"; \
 	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
@@ -105,6 +107,11 @@ build-cleaner: ## Build cleaner and upload Cloud Run Image
 	cd cleaner; \
 	gcloud builds submit --tag gcr.io/$${PROJECT_ID}/insight-cleaner;
 
+build-linker: ## Build linker and upload Cloud Run Image
+	@PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
+	cd linker; \
+	gcloud builds submit --tag gcr.io/$${PROJECT_ID}/insight-linker;
+
 build-merger: ## Build merger and upload Cloud Run Image
 	@PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
 	cd merger; \
@@ -148,6 +155,22 @@ deploy-cleaner: ## Deploy a cleaner from last built image
 		--platform $${CLOUD_RUN_PLATFORM} \
 		--no-allow-unauthenticated; \
 	gcloud run services add-iam-policy-binding insight-cleaner \
+		--member=serviceAccount:cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/run.invoker \
+		--region $${CLOUD_RUN_REGION} \
+		--platform $${CLOUD_RUN_PLATFORM};
+
+deploy-linker: ## Deploy a linker from last built image
+	@PROJECT_ID=$(shell gcloud config list --format 'value(core.project)'); \
+	CLOUD_RUN_REGION=$(shell gcloud config list --format 'value(run.region)'); \
+	CLOUD_RUN_PLATFORM=$(shell gcloud config list --format 'value(run.platform)'); \
+	gcloud run deploy insight-linker \
+		--image gcr.io/$${PROJECT_ID}/insight-linker \
+    	--service-account cloud-run-insight-linker@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--region $${CLOUD_RUN_REGION} \
+		--platform $${CLOUD_RUN_PLATFORM} \
+		--no-allow-unauthenticated; \
+	gcloud run services add-iam-policy-binding insight-linker \
 		--member=serviceAccount:cloud-run-pubsub-invoker@$${PROJECT_ID}.iam.gserviceaccount.com \
 		--role=roles/run.invoker \
 		--region $${CLOUD_RUN_REGION} \
