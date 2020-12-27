@@ -9,7 +9,7 @@ COPY static static
 COPY templates templates
 COPY main.py main.py
 # Install production dependencies.
-RUN pip install Flask gunicorn google-auth google-auth-oauthlib google-cloud-logging
+RUN pip install Flask gunicorn xialib pyinsight google-auth google-auth-oauthlib google-cloud-logging
 # Run the web service on container startup. Here we use the gunicorn
 # webserver, with one worker process and 8 threads.
 # For environments with multiple CPU cores, increase the number of workers
