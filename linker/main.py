@@ -10,7 +10,7 @@ import google.auth.transport.requests
 import google.cloud.logging
 from pyinsight import Insight, Caller
 
-INSIGHT_URL = os.environ.get('INSIGHT_CALLER_URL', 'https://insight-loader-zmfr66omva-ew.a.run.app')[8:]
+INSIGHT_URL = os.environ.get('INSIGHT_LINKER_URL', 'https://insight-linker-aaaaaaaaaa-ew.a.run.app')[8:]
 
 app = Flask(__name__)
 
