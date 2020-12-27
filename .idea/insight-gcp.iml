@@ -12,6 +12,7 @@
         <option value="$MODULE_DIR$/receiver/templates" />
         <option value="$MODULE_DIR$/cleaner/templates" />
         <option value="$MODULE_DIR$/merger/templates" />
+        <option value="$MODULE_DIR$/caller/templates" />
       </list>
     </option>
   </component>
