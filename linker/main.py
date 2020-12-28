@@ -13,8 +13,10 @@ from pyinsight import Insight, Caller
 INSIGHT_URL = os.environ.get('INSIGHT_LINKER_URL', 'https://insight-linker-aaaaaaaaaa-ew.a.run.app')[8:]
 
 app = Flask(__name__)
-
 credentials, project_id = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+client = google.cloud.logging.Client()
+client.get_default_handler()
+client.setup_logging()
 
 @app.route('/', methods=['GET', 'POST'])
 def main():
@@ -44,6 +46,7 @@ def main():
     if resp.status_code == 200:  # pragma: no cover
         return "message received", 200  # pragma: no cover
     else:
+        caller.logger.warning("call {} with {} failed {}".format(api_path, insight_url, resp.text))
         return resp.text, resp.status_code
 
 if __name__ == '__main__':
