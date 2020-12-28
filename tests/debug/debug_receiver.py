@@ -65,7 +65,7 @@ def receiver_callback(s: PubsubSubscriber, message: dict, source, subscription_i
     depositor = FirestoreDepositor(db=firestore_db)
     archiver = GCSListArchiver(storer=gcs_storer)
     storers = [gcs_storer]
-    receiver = Dispatcher(publishers=publishers, depositor=depositor, storers=storers, subscription_list=sub_list)
+    receiver = Dispatcher(publishers=publishers, depositor=depositor, storers=storers)
     header, data, id = s.unpack_message(message)
     receiver.receive_data(header, data)
     s.ack(project_id, subscription_id, id)

@@ -54,6 +54,9 @@ init-users: ## Create Cloud Run needed users
 		--role=roles/logging.logWriter;
 	gcloud iam service-accounts create cloud-run-insight-linker \
 		--display-name "Cloud Run Insight Linker"; \
+	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
+		--member=serviceAccount:cloud-run-insight-linker@$${PROJECT_ID}.iam.gserviceaccount.com \
+		--role=roles/run.invoker; \
 	gcloud iam service-accounts create cloud-run-insight-merger \
 		--display-name "Cloud Run Insight Merger"; \
 	gcloud projects add-iam-policy-binding $${PROJECT_ID} \
