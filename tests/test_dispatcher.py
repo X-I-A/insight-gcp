@@ -24,11 +24,10 @@ def test_get_receive_page(client):
 
 def test_receive_age_header(client):
     with open(os.path.join('.', 'input', 'person_complex', 'schema.json'), 'rb') as f:
-        data_header = json.loads(f.read().decode())
-        field_data = data_header.pop('columns')
+        field_data = json.loads(f.read().decode())
         header = {'topic_id': 'test-001', 'table_id': 'aged_data', 'aged': 'True',
                   'data_encode': 'flat', 'data_format': 'record', 'data_spec': 'x-i-a', 'data_store': 'body',
-                  'age': '1', 'start_seq': '20201113222500000000', 'meta-data': data_header}
+                  'age': '1', 'start_seq': '20201113222500000000', 'meta-data': {}}
     envoloppe = {'message': {'attributes': header,
         'data': base64.b64encode(gzip.compress(json.dumps(field_data, ensure_ascii=False).encode())).decode()}}
     response = client.post('/', json=envoloppe)
